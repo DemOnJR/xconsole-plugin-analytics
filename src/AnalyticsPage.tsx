@@ -1,138 +1,96 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { api, type AgentAnalytics, type ResourceSnapshot } from "../../../src/lib/tauri";
-import { CloseIcon, ChartIcon } from "./icons";
+import {
+  ChartIcon,
+  CacheIcon,
+  ToolIcon,
+  ChatIcon,
+  CpuIcon,
+  ServerIcon,
+  DownloadIcon,
+  RefreshIcon,
+  PauseIcon,
+  PlayIcon,
+  CloseIcon,
+  ActivityIcon,
+} from "./icons";
+import { DashboardTab } from "./components/DashboardTab";
+import { CacheTelemetryTab } from "./components/CacheTelemetryTab";
+import { ToolsTelemetryTab } from "./components/ToolsTelemetryTab";
+import { ConversationsTab } from "./components/ConversationsTab";
+import { HardwareMonitorTab } from "./components/HardwareMonitorTab";
+import { InfrastructureTab } from "./components/InfrastructureTab";
+import { ExportReportsTab } from "./components/ExportReportsTab";
 
-function Spark({
-  values,
-  height = 96,
-  color = "var(--accent)",
-}: {
-  values: number[];
-  height?: number;
-  color?: string;
-}) {
-  if (values.length < 2) {
-    return (
-      <div className="flex h-24 items-center text-[12px] text-[var(--text-faint)]">
-        No samples yet — leave this view open to collect them.
-      </div>
-    );
-  }
-  const w = 640;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = Math.max(1e-6, max - min);
-  const pts = values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * w;
-      const y = height - ((v - min) / span) * (height - 8) - 4;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg
-      width="100%"
-      height={height}
-      viewBox={`0 0 ${w} ${height}`}
-      preserveAspectRatio="none"
-      className="block"
-      aria-hidden
-    >
-      <polyline
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        points={pts}
-      />
-    </svg>
-  );
-}
+type TabId =
+  | "dashboard"
+  | "cache"
+  | "tools"
+  | "sessions"
+  | "hardware"
+  | "infrastructure"
+  | "export";
 
-function Stat({
-  label,
-  value,
-  hint,
-}: {
+interface TabDef {
+  id: TabId;
   label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-      <div className="text-[11px] uppercase tracking-wide text-[var(--text-faint)]">{label}</div>
-      <div className="mt-1 font-mono text-[22px] leading-tight text-[var(--text)]">{value}</div>
-      {hint ? <div className="mt-1 text-[12px] text-[var(--text-faint)]">{hint}</div> : null}
-    </div>
-  );
+  icon: (props: { size?: number }) => JSX.Element;
+  badge?: string | number;
 }
 
-function gpuHint(last: ResourceSnapshot | undefined): string {
-  if (!last) return "detecting…";
-  const bits: string[] = [];
-  if (last.gpu_name) bits.push(last.gpu_name);
-  if (last.gpu_mem_mb != null && last.gpu_mem_total_mb != null) {
-    bits.push(`${last.gpu_mem_mb} / ${last.gpu_mem_total_mb} MB`);
-  } else if (last.gpu_mem_total_mb != null) {
-    bits.push(`${last.gpu_mem_total_mb} MB dedicated`);
-  } else if (last.gpu_mem_mb != null) {
-    bits.push(`${last.gpu_mem_mb} MB in use`);
-  } else if (last.gpu_name && /intel/i.test(last.gpu_name) && last.gpu_mem_total_mb == null) {
-    bits.push("shared memory");
-  }
-  if (bits.length === 0) return "no GPU reported";
-  return bits.join(" · ");
-}
-
-function Card({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-4">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-[13px] font-medium text-[var(--text)]">{title}</h2>
-        {hint ? <span className="text-[11px] text-[var(--text-faint)]">{hint}</span> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
+const TABS: TabDef[] = [
+  { id: "dashboard", label: "Dashboard", icon: ChartIcon },
+  { id: "cache", label: "AI Prompt Cache", icon: CacheIcon },
+  { id: "tools", label: "Agent Tools", icon: ToolIcon },
+  { id: "sessions", label: "Sessions", icon: ChatIcon },
+  { id: "hardware", label: "Hardware & RAM", icon: CpuIcon },
+  { id: "infrastructure", label: "Infrastructure", icon: ServerIcon },
+  { id: "export", label: "Export & Reports", icon: DownloadIcon },
+];
 
 export function AnalyticsPage({ onClose }: { onClose?: () => void }) {
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [data, setData] = useState<AgentAnalytics | null>(null);
   const [samples, setSamples] = useState<ResourceSnapshot[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pollIntervalSec, setPollIntervalSec] = useState<number>(3); // 3 seconds default
+  const [isPaused, setIsPaused] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    const load = () => {
-      api
-        .agentAnalytics()
-        .then((a) => {
-          if (!alive) return;
-          setData(a);
-          setErr(null);
-          setSamples((prev) => [...prev.slice(-179), a.resource]);
-        })
-        .catch((e: unknown) => {
-          if (alive) setErr(String(e));
-        });
-    };
-    load();
-    const t = window.setInterval(load, 4000);
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
+  // Fetch telemetry
+  const fetchTelemetry = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const a = await api.agentAnalytics();
+      setData(a);
+      setErr(null);
+      setSamples((prev) => {
+        const next = [...prev.slice(-179), a.resource];
+        return next;
+      });
+    } catch (e: unknown) {
+      setErr(String(e));
+    } finally {
+      setIsRefreshing(false);
+    }
   }, []);
 
+  // Polling loop
+  useEffect(() => {
+    void fetchTelemetry();
+
+    if (isPaused || pollIntervalSec <= 0) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchTelemetry();
+    }, pollIntervalSec * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [fetchTelemetry, isPaused, pollIntervalSec]);
+
+  // Handle ESC key to close modal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && onClose) {
@@ -144,152 +102,190 @@ export function AnalyticsPage({ onClose }: { onClose?: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const cachePcts = useMemo(() => (data?.cache ?? []).map((p) => p.pct), [data]);
-  const cacheMiss = useMemo(() => (data?.cache ?? []).map((p) => p.miss), [data]);
-  const cpu = useMemo(() => samples.map((s) => s.cpu_pct), [samples]);
-  const ram = useMemo(() => samples.map((s) => s.process_ram_mb), [samples]);
-  const last = samples[samples.length - 1] ?? data?.resource;
-  const maxTools = Math.max(1, ...(data?.tools_all.slice(0, 16).map((t) => t.count) ?? [1]));
+  const lastSample = useMemo(() => {
+    return samples[samples.length - 1] ?? data?.resource;
+  }, [samples, data]);
 
   return (
-    <div className="flex h-full w-full min-h-0 flex-1 flex-col bg-[var(--surface)] text-[var(--text)] select-none" aria-label="Analytics & Telemetry">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-2)] px-6 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-            <ChartIcon size={16} />
+    <div
+      className="flex h-full w-full min-h-0 flex-1 flex-col bg-[var(--surface,#09090b)] text-[var(--text,#fafafa)] select-none font-sans"
+      aria-label="Analytics & Telemetry Suite"
+    >
+      {/* 1. Header Bar */}
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border,#27272a)] bg-[var(--surface-2,#18181b)] px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+            <ChartIcon size={18} />
           </div>
           <div>
-            <h1 className="text-[14px] font-semibold text-gray-100 uppercase tracking-wide">
-              Analytics &amp; Resource Telemetry
-            </h1>
-            <p className="text-[11px] text-gray-400">
-              Real-time cache performance, tool telemetry, and CPU / RAM / GPU metrics.
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold tracking-tight text-white">
+                Analytics &amp; Telemetry Suite
+              </h1>
+              <span className="rounded bg-cyan-500/10 border border-cyan-500/20 px-1.5 py-0.2 text-[10px] font-mono text-cyan-300">
+                v2.0
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live Stream</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--text-faint,#71717a)]">
+              AI prompt cache efficiency, agent tool execution intelligence, CPU/RAM/GPU telemetry
             </p>
           </div>
         </div>
-        {onClose && (
+
+        {/* Polling Rate & Controls */}
+        <div className="flex items-center gap-2">
+          {/* Polling Interval Select */}
+          <div className="flex items-center rounded-lg border border-[var(--border,#27272a)] bg-[var(--surface,#09090b)] p-0.5 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => setIsPaused(!isPaused)}
+              className={`flex h-7 items-center gap-1 rounded px-2 transition ${
+                isPaused
+                  ? "bg-amber-500/20 text-amber-300"
+                  : "text-[var(--text-dim,#a1a1aa)] hover:text-white"
+              }`}
+              title={isPaused ? "Resume real-time polling" : "Pause live polling"}
+            >
+              {isPaused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
+              <span className="text-[10px]">{isPaused ? "Paused" : "Live"}</span>
+            </button>
+
+            <select
+              value={pollIntervalSec}
+              onChange={(e) => {
+                setPollIntervalSec(Number(e.target.value));
+                setIsPaused(false);
+              }}
+              disabled={isPaused}
+              className="h-7 rounded bg-transparent px-2 text-[11px] text-[var(--text,#e4e4e7)] focus:outline-none cursor-pointer disabled:opacity-50"
+            >
+              <option value={1}>1s tick</option>
+              <option value={3}>3s tick</option>
+              <option value={5}>5s tick</option>
+              <option value={10}>10s tick</option>
+              <option value={30}>30s tick</option>
+            </select>
+          </div>
+
+          {/* Manual Refresh Button */}
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-gray-300 hover:bg-[var(--border)] hover:text-white transition"
-            onClick={onClose}
+            onClick={() => void fetchTelemetry()}
+            disabled={isRefreshing}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--border,#27272a)] bg-[var(--surface,#09090b)] px-2.5 text-xs font-mono text-[var(--text-dim,#a1a1aa)] hover:bg-white/5 hover:text-white transition cursor-pointer disabled:opacity-50"
+            title="Manual refresh"
           >
-            <CloseIcon size={12} />
-            <span>Închide</span>
+            <RefreshIcon
+              size={13}
+              className={isRefreshing ? "animate-spin text-cyan-400" : ""}
+            />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-        )}
+
+          {/* Close Button */}
+          {onClose && (
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border,#27272a)] text-zinc-400 hover:bg-white/5 hover:text-white transition cursor-pointer"
+              onClick={onClose}
+              title="Close modal (Esc)"
+            >
+              <CloseIcon size={14} />
+            </button>
+          )}
+        </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 bg-[var(--bg)]/30">
-        {err ? <p className="mb-4 text-[13px] text-red-400 font-mono">{err}</p> : null}
+      {/* 2. Category Tab Navigation Bar */}
+      <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-[var(--border,#27272a)] bg-[var(--surface-2,#18181b)]/60 px-6 py-2">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition cursor-pointer border ${
+                isActive
+                  ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300 shadow-sm"
+                  : "border-transparent text-[var(--text-dim,#a1a1aa)] hover:border-[var(--border,#27272a)] hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. Main Content Area */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 bg-[var(--surface,#09090b)]/40">
+        {err ? (
+          <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-4 text-xs font-mono text-red-300">
+            Error loading telemetry data: {err}
+          </div>
+        ) : null}
+
         {!data ? (
-          <p className="text-[13px] text-[var(--text-faint)]">Loading telemetry metrics…</p>
+          <div className="flex h-64 flex-col items-center justify-center gap-3 text-xs text-[var(--text-faint,#71717a)]">
+            <RefreshIcon size={24} className="animate-spin text-cyan-400" />
+            <span>Connecting to xConsole telemetry kernel…</span>
+          </div>
         ) : (
-          <div className="mx-auto flex max-w-[1200px] flex-col gap-5">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat
-                label="Cache hit"
-                value={`${data.cache_avg_pct.toFixed(0)}%`}
-                hint={`${data.cache.length} recent model requests`}
+          <div className="mx-auto max-w-[1300px]">
+            {activeTab === "dashboard" && (
+              <DashboardTab
+                data={data}
+                samples={samples}
+                onSelectTab={(tabId) => setActiveTab(tabId as TabId)}
               />
-              <Stat
-                label="This process"
-                value={`${last?.process_ram_mb ?? 0} MB`}
-                hint={last ? `CPU ${last.cpu_pct.toFixed(0)}%` : undefined}
-              />
-              <Stat
-                label="System RAM"
-                value={
-                  last
-                    ? `${Math.round((last.ram_mb / Math.max(1, last.ram_total_mb)) * 100)}%`
-                    : "—"
-                }
-                hint={last ? `${last.ram_mb} / ${last.ram_total_mb} MB` : undefined}
-              />
-              <Stat
-                label="GPU"
-                value={
-                  last?.gpu_pct != null
-                    ? `${last.gpu_pct.toFixed(0)}%`
-                    : last?.gpu_name
-                      ? "idle / shared"
-                      : "n/a"
-                }
-                hint={gpuHint(last)}
-              />
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <Card title="Cache hit rate" hint="recent turns, %">
-                <Spark values={cachePcts} />
-              </Card>
-              <Card title="Uncached tokens (miss)" hint="lower is cheaper">
-                <Spark values={cacheMiss} color="var(--warning)" />
-              </Card>
-              <Card title="App CPU" hint="while this view is open">
-                <Spark values={cpu} />
-              </Card>
-              <Card title="App RAM (MB)" hint="this process">
-                <Spark values={ram} />
-              </Card>
-            </div>
+            {activeTab === "cache" && <CacheTelemetryTab data={data} />}
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <Card title="Tools across recent chats">
-                {data.tools_all.length === 0 ? (
-                  <p className="text-[13px] text-[var(--text-faint)]">No tool history yet</p>
-                ) : (
-                  <ul className="flex flex-col gap-1.5">
-                    {data.tools_all.slice(0, 16).map((t) => (
-                      <li key={t.name} className="flex items-center gap-3">
-                        <span className="w-40 shrink-0 truncate font-mono text-[12px] text-[var(--text-dim)]">
-                          {t.name}
-                        </span>
-                        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--bg)]">
-                          <div
-                            className="h-full rounded-full bg-[var(--accent)]"
-                            style={{ width: `${Math.max(4, (t.count / maxTools) * 100)}%` }}
-                          />
-                        </div>
-                        <span className="w-10 shrink-0 text-right font-mono text-[12px] text-[var(--text-faint)]">
-                          {t.count}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
+            {activeTab === "tools" && <ToolsTelemetryTab data={data} />}
 
-              <Card title="Sessions">
-                {data.conversations.length === 0 ? (
-                  <p className="text-[13px] text-[var(--text-faint)]">No chats saved yet</p>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {data.conversations.map((c) => (
-                      <li
-                        key={c.id}
-                        className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg)] px-3 py-2"
-                      >
-                        <div className="truncate text-[13px] text-[var(--text)]">
-                          {c.title || "Untitled"}
-                        </div>
-                        <div className="mt-0.5 text-[12px] text-[var(--text-faint)]">
-                          {c.user_turns} user turns · {c.tool_calls} tools
-                          {c.updated_at ? ` · ${c.updated_at.slice(0, 16)}` : ""}
-                        </div>
-                        {c.tools[0] ? (
-                          <div className="mt-0.5 font-mono text-[11px] text-[var(--text-faint)]">
-                            top {c.tools[0].name} ×{c.tools[0].count}
-                          </div>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
-            </div>
+            {activeTab === "sessions" && <ConversationsTab data={data} />}
+
+            {activeTab === "hardware" && lastSample && (
+              <HardwareMonitorTab samples={samples} lastSample={lastSample} />
+            )}
+
+            {activeTab === "infrastructure" && <InfrastructureTab />}
+
+            {activeTab === "export" && <ExportReportsTab data={data} samples={samples} />}
           </div>
         )}
       </div>
+
+      {/* 4. Footer Status Strip */}
+      <footer className="flex shrink-0 items-center justify-between border-t border-[var(--border,#27272a)] bg-[var(--surface-2,#18181b)] px-6 py-2 text-[11px] font-mono text-[var(--text-faint,#71717a)]">
+        <div className="flex items-center gap-3">
+          <span>Samples in buffer: {samples.length}</span>
+          <span>&bull;</span>
+          <span>
+            Cache hit: <strong className="text-cyan-400">{data?.cache_avg_pct.toFixed(0) || 0}%</strong>
+          </span>
+          <span>&bull;</span>
+          <span>
+            Host CPU:{" "}
+            <strong className="text-amber-400">
+              {lastSample?.cpu_pct.toFixed(0) || 0}%
+            </strong>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span>xConsole Cordis Telemetry</span>
+        </div>
+      </footer>
     </div>
   );
 }
+
+export default AnalyticsPage;

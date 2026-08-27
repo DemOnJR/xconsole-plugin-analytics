@@ -1,8 +1,8 @@
 {
   "id": "xconsole-plugin-analytics",
   "name": "Analytics & Telemetry",
-  "version": "1.0.0",
-  "description": "Real-time process telemetry, CPU/RAM/GPU monitoring, model cache hits, and AI tool usage analytics for xConsole.",
+  "version": "2.0.0",
+  "description": "Real-time process telemetry, CPU/RAM/GPU monitoring, prompt cache efficiency, agent tool usage intelligence, and infrastructure metrics for xConsole.",
   "author": "xConsole Team",
   "repository": "https://github.com/DemOnJR/xconsole-plugin-analytics",
   "icon": "ChartIcon",
@@ -15,6 +15,17 @@
       "label": "Analytics & Telemetry",
       "icon": "ChartIcon",
       "order": 60
+    },
+    "agentTools": [
+      {
+        "name": "get_system_telemetry",
+        "description": "Retrieve live system CPU, RAM, GPU telemetry, AI prompt cache hit rates, and tool execution statistics.",
+        "parameters": { "type": "object", "properties": {} }
+      }
+    ],
+    "settingsSection": {
+      "id": "analytics",
+      "title": "Analytics & Telemetry"
     }
   }
 }
