@@ -1,12 +1,8 @@
 import { useState, useMemo } from "react";
-import type { AgentAnalytics, ToolCount } from "../../../../src/lib/tauri";
+import type { AgentAnalytics, ToolCount } from "../types";
 import {
   ToolIcon,
   SearchIcon,
-  TerminalIcon,
-  FolderIcon,
-  DatabaseIcon,
-  CloudIcon,
   ZapIcon,
   LayersIcon,
 } from "../icons";
@@ -40,12 +36,12 @@ export function ToolsTelemetryTab({ data }: ToolsTelemetryTabProps) {
   const [sortBy, setSortBy] = useState<"count" | "name">("count");
 
   const totalToolCalls = useMemo(
-    () => data.tools_all.reduce((acc, t) => acc + t.count, 0),
+    () => data.tools_all.reduce((acc: number, t: ToolCount) => acc + t.count, 0),
     [data.tools_all],
   );
 
   const maxToolCount = useMemo(
-    () => Math.max(1, ...(data.tools_all.map((t) => t.count) || [1])),
+    () => Math.max(1, ...(data.tools_all.map((t: ToolCount) => t.count) || [1])),
     [data.tools_all],
   );
 
@@ -63,14 +59,14 @@ export function ToolsTelemetryTab({ data }: ToolsTelemetryTabProps) {
   const filteredTools = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return data.tools_all
-      .filter((t) => {
+      .filter((t: ToolCount) => {
         if (selectedCategory !== "all" && getToolCategory(t.name).label !== selectedCategory) {
           return false;
         }
         if (!q) return true;
         return t.name.toLowerCase().includes(q);
       })
-      .sort((a, b) => {
+      .sort((a: ToolCount, b: ToolCount) => {
         if (sortBy === "count") return b.count - a.count;
         return a.name.localeCompare(b.name);
       });

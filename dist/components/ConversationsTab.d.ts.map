@@ -1,0 +1,1 @@
+{"version":3,"file":"ConversationsTab.d.ts","sourceRoot":"","sources":["../../src/components/ConversationsTab.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAA+B,MAAM,UAAU,CAAC;AAS5E,UAAU,qBAAqB;IAC7B,IAAI,EAAE,cAAc,CAAC;CACtB;AAED,wBAAgB,gBAAgB,CAAC,EAAE,IAAI,EAAE,EAAE,qBAAqB,+BAiO/D"}

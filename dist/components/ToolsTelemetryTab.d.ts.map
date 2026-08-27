@@ -1,0 +1,1 @@
+{"version":3,"file":"ToolsTelemetryTab.d.ts","sourceRoot":"","sources":["../../src/components/ToolsTelemetryTab.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAAa,MAAM,UAAU,CAAC;AAQ1D,UAAU,sBAAsB;IAC9B,IAAI,EAAE,cAAc,CAAC;CACtB;AAqBD,wBAAgB,iBAAiB,CAAC,EAAE,IAAI,EAAE,EAAE,sBAAsB,+BA6MjE"}

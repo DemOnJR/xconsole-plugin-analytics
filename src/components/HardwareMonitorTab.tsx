@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ResourceSnapshot } from "../../../../src/lib/tauri";
+import type { ResourceSnapshot } from "../types";
 import { AreaChart } from "./AreaChart";
 import { Gauge } from "./Gauge";
 import {
@@ -7,7 +7,6 @@ import {
   RamIcon,
   GpuIcon,
   ServerIcon,
-  ActivityIcon,
 } from "../icons";
 
 interface HardwareMonitorTabProps {
@@ -16,11 +15,10 @@ interface HardwareMonitorTabProps {
 }
 
 export function HardwareMonitorTab({ samples, lastSample }: HardwareMonitorTabProps) {
-  const cpuData = useMemo(() => samples.map((s) => s.cpu_pct), [samples]);
-  const processRamData = useMemo(() => samples.map((s) => s.process_ram_mb), [samples]);
-  const systemRamData = useMemo(() => samples.map((s) => s.ram_mb), [samples]);
+  const cpuData = useMemo(() => samples.map((s: ResourceSnapshot) => s.cpu_pct), [samples]);
+  const systemRamData = useMemo(() => samples.map((s: ResourceSnapshot) => s.ram_mb), [samples]);
   const timestamps = useMemo(
-    () => samples.map((s) => (s.ts ? s.ts.slice(11, 19) : "")),
+    () => samples.map((s: ResourceSnapshot) => (s.ts ? s.ts.slice(11, 19) : "")),
     [samples],
   );
 

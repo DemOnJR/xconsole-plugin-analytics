@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, type Vps } from "../../../../src/lib/tauri";
+import { api } from "../api";
+import type { Vps } from "../types";
 import {
   ServerIcon,
   FolderIcon,
   DatabaseIcon,
   CloudIcon,
   CheckCircleIcon,
-  TerminalIcon,
-  ShieldIcon,
 } from "../icons";
 
 export function InfrastructureTab() {
@@ -18,7 +17,7 @@ export function InfrastructureTab() {
     let alive = true;
     api
       .listVps()
-      .then((list) => {
+      .then((list: Vps[]) => {
         if (alive) {
           setVpsList(list);
           setLoading(false);

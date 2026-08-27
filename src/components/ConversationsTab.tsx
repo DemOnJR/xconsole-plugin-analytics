@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
-import type { AgentAnalytics, ConversationStat } from "../../../../src/lib/tauri";
+import type { AgentAnalytics, ConversationStat, ToolCount } from "../types";
 import {
   ChatIcon,
   SearchIcon,
   ToolIcon,
   ChevronRightIcon,
   ActivityIcon,
-  CheckCircleIcon,
 } from "../icons";
 
 interface ConversationsTabProps {
@@ -23,23 +22,23 @@ export function ConversationsTab({ data }: ConversationsTabProps) {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return data.conversations;
     return data.conversations.filter(
-      (c) =>
+      (c: ConversationStat) =>
         (c.title || "").toLowerCase().includes(q) ||
         c.id.toLowerCase().includes(q),
     );
   }, [data.conversations, searchQuery]);
 
   const selectedConv = useMemo(
-    () => data.conversations.find((c) => c.id === selectedId) || null,
+    () => data.conversations.find((c: ConversationStat) => c.id === selectedId) || null,
     [data.conversations, selectedId],
   );
 
   const totalTurns = useMemo(
-    () => data.conversations.reduce((acc, c) => acc + c.user_turns, 0),
+    () => data.conversations.reduce((acc: number, c: ConversationStat) => acc + c.user_turns, 0),
     [data.conversations],
   );
   const totalTools = useMemo(
-    () => data.conversations.reduce((acc, c) => acc + c.tool_calls, 0),
+    () => data.conversations.reduce((acc: number, c: ConversationStat) => acc + c.tool_calls, 0),
     [data.conversations],
   );
 
@@ -210,7 +209,7 @@ export function ConversationsTab({ data }: ConversationsTabProps) {
                     </p>
                   ) : (
                     <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
-                      {selectedConv.tools.map((t) => (
+                      {selectedConv.tools.map((t: ToolCount) => (
                         <div
                           key={t.name}
                           className="flex items-center justify-between rounded-md bg-[var(--surface-2,#18181b)] px-3 py-2 text-xs font-mono border border-[var(--border,#27272a)]"

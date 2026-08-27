@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { api, type AgentAnalytics, type ResourceSnapshot } from "../../../src/lib/tauri";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
+import { api } from "./api";
+import type { AgentAnalytics, ResourceSnapshot } from "./types";
 import {
   ChartIcon,
   CacheIcon,
@@ -12,7 +13,6 @@ import {
   PauseIcon,
   PlayIcon,
   CloseIcon,
-  ActivityIcon,
 } from "./icons";
 import { DashboardTab } from "./components/DashboardTab";
 import { CacheTelemetryTab } from "./components/CacheTelemetryTab";
@@ -34,7 +34,7 @@ type TabId =
 interface TabDef {
   id: TabId;
   label: string;
-  icon: (props: { size?: number }) => JSX.Element;
+  icon: (props: { size?: number }) => ReactNode;
   badge?: string | number;
 }
 

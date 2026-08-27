@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { AgentAnalytics, ResourceSnapshot } from "../../../../src/lib/tauri";
+import type { AgentAnalytics, ResourceSnapshot, ToolCount, CachePoint } from "../types";
 import {
   DownloadIcon,
   CopyIcon,
   CheckIcon,
-  FileCodeIcon,
   InfoIcon,
 } from "../icons";
 
@@ -43,9 +42,9 @@ export function ExportReportsTab({ data, samples }: ExportReportsTabProps) {
 
   const handleDownloadToolsCSV = () => {
     const headers = "Tool Name,Execution Count,Percentage Share\n";
-    const totalCalls = Math.max(1, data.tools_all.reduce((a, b) => a + b.count, 0));
+    const totalCalls = Math.max(1, data.tools_all.reduce((a: number, b: ToolCount) => a + b.count, 0));
     const rows = data.tools_all
-      .map((t) => `"${t.name}",${t.count},${((t.count / totalCalls) * 100).toFixed(1)}%`)
+      .map((t: ToolCount) => `"${t.name}",${t.count},${((t.count / totalCalls) * 100).toFixed(1)}%`)
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -59,7 +58,7 @@ export function ExportReportsTab({ data, samples }: ExportReportsTabProps) {
   const handleDownloadCacheCSV = () => {
     const headers = "Timestamp,Session,Prompt Tokens,Hit Tokens,Miss Tokens,Hit Pct\n";
     const rows = data.cache
-      .map((c) => `"${c.ts}","${c.session}",${c.prompt},${c.hit},${c.miss},${c.pct}%`)
+      .map((c: CachePoint) => `"${c.ts}","${c.session}",${c.prompt},${c.hit},${c.miss},${c.pct}%`)
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

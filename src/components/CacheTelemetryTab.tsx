@@ -1,13 +1,11 @@
 import { useState, useMemo } from "react";
-import type { AgentAnalytics, CachePoint } from "../../../../src/lib/tauri";
+import type { AgentAnalytics, CachePoint } from "../types";
 import { AreaChart } from "./AreaChart";
 import {
   CacheIcon,
   SearchIcon,
-  FilterIcon,
   TrendingUpIcon,
   ZapIcon,
-  CheckCircleIcon,
   AlertTriangleIcon,
 } from "../icons";
 
@@ -21,15 +19,11 @@ export function CacheTelemetryTab({ data }: CacheTelemetryTabProps) {
 
   // Compute metrics
   const totalCachedTokens = useMemo(
-    () => data.cache.reduce((acc, c) => acc + c.hit, 0),
+    () => data.cache.reduce((acc: number, c: CachePoint) => acc + c.hit, 0),
     [data.cache],
   );
   const totalMissTokens = useMemo(
-    () => data.cache.reduce((acc, c) => acc + c.miss, 0),
-    [data.cache],
-  );
-  const totalPromptTokens = useMemo(
-    () => data.cache.reduce((acc, c) => acc + c.prompt, 0),
+    () => data.cache.reduce((acc: number, c: CachePoint) => acc + c.miss, 0),
     [data.cache],
   );
 
@@ -39,11 +33,10 @@ export function CacheTelemetryTab({ data }: CacheTelemetryTabProps) {
   }, [totalCachedTokens]);
 
   // Chart data
-  const hitPercentages = useMemo(() => data.cache.map((c) => c.pct), [data.cache]);
-  const hitTokens = useMemo(() => data.cache.map((c) => c.hit), [data.cache]);
-  const missTokens = useMemo(() => data.cache.map((c) => c.miss), [data.cache]);
+  const hitPercentages = useMemo(() => data.cache.map((c: CachePoint) => c.pct), [data.cache]);
+  const hitTokens = useMemo(() => data.cache.map((c: CachePoint) => c.hit), [data.cache]);
   const timestamps = useMemo(
-    () => data.cache.map((c) => (c.ts ? c.ts.slice(11, 19) : "")),
+    () => data.cache.map((c: CachePoint) => (c.ts ? c.ts.slice(11, 19) : "")),
     [data.cache],
   );
 
@@ -51,7 +44,7 @@ export function CacheTelemetryTab({ data }: CacheTelemetryTabProps) {
   const filteredLog = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return data.cache
-      .filter((item) => {
+      .filter((item: CachePoint) => {
         if (item.pct < minPctFilter) return false;
         if (!q) return true;
         return (

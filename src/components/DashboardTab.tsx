@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import type { AgentAnalytics, ResourceSnapshot } from "../../../../src/lib/tauri";
+import type { AgentAnalytics, ResourceSnapshot, CachePoint, ToolCount } from "../types";
 import { AreaChart } from "./AreaChart";
 import { Gauge } from "./Gauge";
 import {
   CpuIcon,
   RamIcon,
-  GpuIcon,
   CacheIcon,
   ToolIcon,
   ChatIcon,
@@ -23,37 +22,36 @@ export function DashboardTab({ data, samples, onSelectTab }: DashboardTabProps) 
   const lastSample = samples[samples.length - 1] ?? data.resource;
 
   // Cache sparkline numbers
-  const cacheHitPercentages = useMemo(() => data.cache.map((c) => c.pct), [data.cache]);
-  const cacheMissTokens = useMemo(() => data.cache.map((c) => c.miss), [data.cache]);
+  const cacheHitPercentages = useMemo(() => data.cache.map((c: CachePoint) => c.pct), [data.cache]);
+  const cacheMissTokens = useMemo(() => data.cache.map((c: CachePoint) => c.miss), [data.cache]);
   const cacheTimestamps = useMemo(
-    () => data.cache.map((c) => (c.ts ? c.ts.slice(11, 19) : "")),
+    () => data.cache.map((c: CachePoint) => (c.ts ? c.ts.slice(11, 19) : "")),
     [data.cache],
   );
 
   // Hardware sliding window
-  const cpuValues = useMemo(() => samples.map((s) => s.cpu_pct), [samples]);
-  const ramValues = useMemo(() => samples.map((s) => s.process_ram_mb), [samples]);
+  const ramValues = useMemo(() => samples.map((s: ResourceSnapshot) => s.process_ram_mb), [samples]);
   const sampleTimestamps = useMemo(
-    () => samples.map((s) => (s.ts ? s.ts.slice(11, 19) : "")),
+    () => samples.map((s: ResourceSnapshot) => (s.ts ? s.ts.slice(11, 19) : "")),
     [samples],
   );
 
   // Top tools
   const topTools = useMemo(() => data.tools_all.slice(0, 6), [data.tools_all]);
   const maxToolCount = useMemo(
-    () => Math.max(1, ...(topTools.map((t) => t.count) || [1])),
+    () => Math.max(1, ...(topTools.map((t: ToolCount) => t.count) || [1])),
     [topTools],
   );
 
   // Total tool calls across all chats
   const totalToolCalls = useMemo(
-    () => data.tools_all.reduce((acc, t) => acc + t.count, 0),
+    () => data.tools_all.reduce((acc: number, t: ToolCount) => acc + t.count, 0),
     [data.tools_all],
   );
 
   // Estimated tokens saved via caching
   const totalCachedTokens = useMemo(
-    () => data.cache.reduce((acc, c) => acc + c.hit, 0),
+    () => data.cache.reduce((acc: number, c: CachePoint) => acc + c.hit, 0),
     [data.cache],
   );
 
@@ -288,7 +286,7 @@ export function DashboardTab({ data, samples, onSelectTab }: DashboardTabProps) 
                 Uncached Miss Tokens
               </div>
               <div className="font-mono text-base font-bold text-amber-300">
-                {cacheMissTokens.reduce((a, b) => a + b, 0).toLocaleString()}
+                {cacheMissTokens.reduce((a: number, b: number) => a + b, 0).toLocaleString()}
               </div>
             </div>
           </div>
@@ -318,7 +316,7 @@ export function DashboardTab({ data, samples, onSelectTab }: DashboardTabProps) 
             </div>
           ) : (
             <div className="flex flex-col gap-2.5 my-auto">
-              {topTools.map((t, idx) => {
+              {topTools.map((t: ToolCount, idx: number) => {
                 const pct = Math.round((t.count / Math.max(1, totalToolCalls)) * 100);
                 return (
                   <div key={t.name} className="flex flex-col gap-1">

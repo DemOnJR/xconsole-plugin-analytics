@@ -1,0 +1,1 @@
+{"version":3,"file":"CacheTelemetryTab.d.ts","sourceRoot":"","sources":["../../src/components/CacheTelemetryTab.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAAc,MAAM,UAAU,CAAC;AAU3D,UAAU,sBAAsB;IAC9B,IAAI,EAAE,cAAc,CAAC;CACtB;AAED,wBAAgB,iBAAiB,CAAC,EAAE,IAAI,EAAE,EAAE,sBAAsB,+BA6OjE"}

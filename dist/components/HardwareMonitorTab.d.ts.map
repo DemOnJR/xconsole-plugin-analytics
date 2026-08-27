@@ -1,0 +1,1 @@
+{"version":3,"file":"HardwareMonitorTab.d.ts","sourceRoot":"","sources":["../../src/components/HardwareMonitorTab.tsx"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,UAAU,CAAC;AAUjD,UAAU,uBAAuB;IAC/B,OAAO,EAAE,gBAAgB,EAAE,CAAC;IAC5B,UAAU,EAAE,gBAAgB,CAAC;CAC9B;AAED,wBAAgB,kBAAkB,CAAC,EAAE,OAAO,EAAE,UAAU,EAAE,EAAE,uBAAuB,+BAyIlF"}
