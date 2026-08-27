@@ -1,0 +1,20 @@
+{
+  "id": "xconsole-plugin-analytics",
+  "name": "Analytics & Telemetry",
+  "version": "1.0.0",
+  "description": "Real-time process telemetry, CPU/RAM/GPU monitoring, model cache hits, and AI tool usage analytics for xConsole.",
+  "author": "xConsole Team",
+  "repository": "https://github.com/DemOnJR/xconsole-plugin-analytics",
+  "icon": "ChartIcon",
+  "category": "system",
+  "enabled": true,
+  "isBuiltin": true,
+  "capabilities": {
+    "navItem": {
+      "id": "analytics",
+      "label": "Analytics & Telemetry",
+      "icon": "ChartIcon",
+      "order": 60
+    }
+  }
+}
